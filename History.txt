@@ -1,3 +1,7 @@
+= 2.1.11
+
+* naw added flags to database to be used for archiving sent and failed messages rather than deleting them.
+
 = 2.1.8
 
 * Bugs fixed

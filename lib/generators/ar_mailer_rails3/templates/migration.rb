@@ -6,7 +6,12 @@ class Create<%= migration_class_name.gsub(/::/, '') %> < ActiveRecord::Migration
       t.column :last_send_attempt, :integer, :default => 0
       t.column :mail, :text
       t.column :created_on, :datetime
+      t.column :created_at, :datetime
+      t.column :sent_at, :datetime
+      t.column :fatal_failure_at, :datetime
     end
+    
+    add_index :<%= table_name %>, [:sent_at, :last_send_attempt,:fatal_failure_at]
   end
 
   def self.down

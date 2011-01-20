@@ -42,7 +42,7 @@ class ArMailerRails3::ARSendmail
   ##
   # The version of ActionMailer::ARSendmail you are running.
 
-  VERSION = '2.1.8'
+  VERSION = '2.1.11'
 
   ##
   # Maximum number of times authentication will be consecutively retried
@@ -105,7 +105,7 @@ class ArMailerRails3::ARSendmail
   # to learn how to enable ActiveRecord::Timestamp.
 
   def self.mailq
-    emails = self.email_class.find :all
+    emails = self.email_class.find(:all, :conditions => "sent_at is null and fatal_failure_at is null")
 
     if emails.empty? then
       puts "Mail queue is empty"
@@ -384,13 +384,15 @@ class ArMailerRails3::ARSendmail
         email = emails.shift
         begin
           res = session.send_message email.mail, email.from, email.to
-          email.destroy
+          
+          email.update_attributes!(:sent_at => Time.now.utc)
+          
           log "sent email %011d from %s to %s: %p" %
                 [email.id, email.from, email.to, res]
         rescue Net::SMTPFatalError => e
           log "5xx error sending email %d, removing from queue: %p(%s):\n\t%s" %
                 [email.id, e.message, e.class, e.backtrace.join("\n\t")]
-          email.destroy
+          email.update_attributes!(:fatal_failure_at => Time.now.utc)
           session.reset
         rescue Net::SMTPServerBusy => e
           log "server too busy, stopping delivery cycle"
@@ -431,7 +433,7 @@ class ArMailerRails3::ARSendmail
   # last 300 seconds.
 
   def find_emails
-    options = { :conditions => ['last_send_attempt < ?', Time.now.to_i - 300] }
+    options = { :conditions => ['sent_at is null and fatal_failure_at is null and last_send_attempt < ?', Time.now.to_i - 300] }
     options[:limit] = batch_size unless batch_size.nil?
     mail = self.class.email_class.find :all, options
 
@@ -464,7 +466,7 @@ class ArMailerRails3::ARSendmail
 
     loop do
       begin
-        cleanup
+        #cleanup
         emails = find_emails
         deliver(emails) unless emails.empty?
       rescue
